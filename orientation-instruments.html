@@ -39,6 +39,8 @@
   v2.9.0  Added a third theme: white background with a vivid orange/
           teal "pop" palette. The theme button now cycles through all
           three (Mono → Neon → Pop → Mono).
+  v2.9.1  Changed the "Pop" theme's primary accent from orange to a
+          neon pink, keeping the teal secondary accent for contrast.
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -83,8 +85,8 @@
     --panel: #f5f5fa;
     --panel-2: #ececf5;
     --hairline: #dcdce8;
-    --phosphor: #ff5200;
-    --phosphor-dim: #b23900;
+    --phosphor: #ff1ea3;
+    --phosphor-dim: #a3006b;
     --amber: #00b8d9;
     --red: #e11d48;
     --ink: #14141c;
@@ -255,7 +257,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2.9.0';
+  const APP_VERSION = '2.9.1';
 
   const statusDot = document.getElementById('statusDot');
   const statusText = document.getElementById('statusText');

@@ -1,3 +1,22 @@
+<!--
+  Position & Heading — version history
+
+  v1.0.0  Initial build: attitude indicator (pitch/roll), compass heading,
+          gyroscope rotation rate, accelerometer, GPS lat/lon/alt/speed/course,
+          home-screen PWA meta tags.
+  v2.0.0  Simplified UI: removed attitude indicator, rotation rate, and
+          acceleration blocks. Kept compass direction + lat/lon/alt/speed/
+          accuracy grid only.
+  v2.1.0  Added pause/resume button and auto-pause when backgrounded
+          (screen off / app switched away) to reduce battery use. Sensor
+          redraw throttled to ~15fps instead of raw event rate.
+  v2.2.0  Added offline support via service worker (sw.js) caching the
+          app shell.
+  v2.3.0  Speed changed from m/s to km/h. Added "Open in Maps" buttons
+          (Apple Maps, Google Maps, Amap) using current coordinates.
+  v2.4.0  Added this version history and an on-screen version indicator.
+  v2.5.0  Removed the "Open in Maps" buttons (Apple/Google/Amap).
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -92,15 +111,6 @@
   .cell .v{ font-size:20px; color:var(--phosphor); margin-top:4px; font-variant-numeric:tabular-nums; }
   .cell .v .u{ font-size:12px; color:var(--ink-dim); margin-left:3px; }
 
-  .maps-row{ display:flex; gap:8px; }
-  .mapbtn{
-    flex:1; background:var(--panel); color:var(--ink); border:1px solid var(--hairline);
-    font-family:inherit; font-size:11px; letter-spacing:.04em;
-    padding:12px 6px; border-radius:8px; cursor:pointer; text-align:center;
-  }
-  .mapbtn:active{ background:var(--panel-2); border-color:var(--phosphor-dim); color:var(--phosphor); }
-  .mapbtn:disabled{ opacity:.35; }
-
   footer{ text-align:center; font-size:9px; color:var(--ink-dim); letter-spacing:.08em; padding-top:4px; }
 </style>
 </head>
@@ -136,28 +146,21 @@
       <div class="cell"><div class="k">Direction</div><div class="v" id="vHeading">—<span class="u">°</span></div></div>
     </div>
 
-    <div class="maps-row">
-      <button class="mapbtn" id="btnApple" disabled>Apple Maps</button>
-      <button class="mapbtn" id="btnGoogle" disabled>Google Maps</button>
-      <button class="mapbtn" id="btnAmap" disabled>Amap</button>
-    </div>
-
   </div>
 
-  <footer>GPS &amp; COMPASS — LOCAL PROCESSING ONLY</footer>
+  <footer>GPS &amp; COMPASS — LOCAL PROCESSING ONLY<br><span id="versionTag"></span></footer>
 </div>
 
 <script>
 (function(){
+  const APP_VERSION = '2.5.0';
+
   const statusDot = document.getElementById('statusDot');
   const statusText = document.getElementById('statusText');
   const permitPanel = document.getElementById('permitPanel');
   const instruments = document.getElementById('instruments');
   const grantBtn = document.getElementById('grantBtn');
   const pauseBtn = document.getElementById('pauseBtn');
-  const btnApple = document.getElementById('btnApple');
-  const btnGoogle = document.getElementById('btnGoogle');
-  const btnAmap = document.getElementById('btnAmap');
 
   function setStatus(text, cls){
     statusText.textContent = text;
@@ -262,10 +265,6 @@
     const kmh = (c.speed==null) ? null : c.speed * 3.6; // m/s -> km/h
     document.getElementById('vSpeed').innerHTML = (kmh==null? '—' : kmh.toFixed(1)) + '<span class="u">km/h</span>';
     document.getElementById('vAcc').innerHTML = (c.accuracy==null? '—' : c.accuracy.toFixed(0)) + '<span class="u">m</span>';
-
-    btnApple.disabled = false;
-    btnGoogle.disabled = false;
-    btnAmap.disabled = false;
   }
   function onPositionErr(){
     document.getElementById('vLat').textContent = 'denied';
@@ -377,27 +376,7 @@
   });
 
   setStatus('STANDBY');
-
-  // ---------- open in maps ----------
-  // Apple/Google Maps have universal web links that open the installed app
-  // directly on iOS, falling back to a website if the app isn't installed.
-  // Amap (高德地图) has no universal web fallback, so it uses its URL scheme
-  // directly — this only works if Amap is installed.
-  btnApple.addEventListener('click', function(){
-    if (lastLat==null) return;
-    window.location.href = 'https://maps.apple.com/?ll=' + lastLat + ',' + lastLon + '&q=Current+Position';
-  });
-  btnGoogle.addEventListener('click', function(){
-    if (lastLat==null) return;
-    window.location.href = 'https://www.google.com/maps?q=' + lastLat + ',' + lastLon;
-  });
-  btnAmap.addEventListener('click', function(){
-    if (lastLat==null) return;
-    // Amap uses GCJ-02 coordinates and lon,lat order; this passes raw WGS-84
-    // values, so the pin may be visibly offset from true position (a known
-    // limitation outside mainland China map providers, not a bug here).
-    window.location.href = 'iosamap://viewMap?sourceApplication=PositionHeading&poiname=Current+Position&lat=' + lastLat + '&lon=' + lastLon + '&dev=0';
-  });
+  document.getElementById('versionTag').textContent = 'v' + APP_VERSION;
 })();
 
 if ('serviceWorker' in navigator){

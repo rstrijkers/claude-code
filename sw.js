@@ -7,7 +7,7 @@
 // Safari to fetch the updated page instead of serving the stale cached
 // copy, which otherwise can stick around indefinitely.
 
-const CACHE_NAME = 'position-heading-v2.6.0';
+const CACHE_NAME = 'position-heading-v2.6.1';
 
 self.addEventListener('install', function(event){
   event.waitUntil(

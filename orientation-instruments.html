@@ -41,6 +41,10 @@
           three (Mono → Neon → Pop → Mono).
   v2.9.1  Changed the "Pop" theme's primary accent from orange to a
           neon pink, keeping the teal secondary accent for contrast.
+  v2.9.2  Added a neon glow to the Pop theme: title, live-status dot,
+          data values, the compass canvas, and the full-screen altitude
+          number all get a soft light-blur halo. Other themes are
+          unaffected.
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -66,6 +70,7 @@
     --ink: #cfd8dd;
     --ink-dim: #6f7d85;
     --ink-rgb: 207,216,221;
+    --phosphor-rgb: 53,224,161;
   }
   :root[data-theme="pink"]{
     --bg: #13001b;
@@ -79,6 +84,7 @@
     --ink: #ffd9f7;
     --ink-dim: #c56bc0;
     --ink-rgb: 255,217,247;
+    --phosphor-rgb: 255,47,224;
   }
   :root[data-theme="light"]{
     --bg: #ffffff;
@@ -92,6 +98,7 @@
     --ink: #14141c;
     --ink-dim: #6e6e7c;
     --ink-rgb: 20,20,28;
+    --phosphor-rgb: 255,30,163;
   }
   *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html,body{
@@ -203,6 +210,33 @@
   }
 
   footer{ text-align:center; font-size:9px; color:var(--ink-dim); letter-spacing:.08em; padding-top:4px; }
+
+  /* Pop theme: everything gets a neon glow */
+  :root[data-theme="light"] header .title b{
+    text-shadow: 0 0 6px var(--phosphor), 0 0 16px rgba(var(--phosphor-rgb),.6);
+  }
+  :root[data-theme="light"] .status .dot.live{
+    box-shadow: 0 0 6px var(--phosphor), 0 0 16px rgba(var(--phosphor-rgb),.7);
+  }
+  :root[data-theme="light"] .pausebtn.active,
+  :root[data-theme="light"] .themebtn:active,
+  :root[data-theme="light"] .expandbtn:active{
+    text-shadow: 0 0 6px rgba(var(--phosphor-rgb),.8);
+  }
+  :root[data-theme="light"] .compass-card,
+  :root[data-theme="light"] .data-grid,
+  :root[data-theme="light"] .permit{
+    box-shadow: 0 0 28px rgba(var(--phosphor-rgb),.28);
+  }
+  :root[data-theme="light"] .cell .v{
+    text-shadow: 0 0 6px rgba(var(--phosphor-rgb),.8), 0 0 16px rgba(var(--phosphor-rgb),.4);
+  }
+  :root[data-theme="light"] .altFocusValue{
+    text-shadow: 0 0 3vmin rgba(var(--phosphor-rgb),.9), 0 0 8vmin rgba(var(--phosphor-rgb),.5);
+  }
+  :root[data-theme="light"] .permit button{
+    box-shadow: 0 0 20px rgba(var(--phosphor-rgb),.45);
+  }
 </style>
 </head>
 <body>
@@ -257,7 +291,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2.9.1';
+  const APP_VERSION = '2.9.2';
 
   const statusDot = document.getElementById('statusDot');
   const statusText = document.getElementById('statusText');
@@ -317,7 +351,9 @@
   const hctx = hdg.getContext('2d');
   function drawHeading(headingDeg){
     const w = hdg.width, h = hdg.height, cx=w/2, cy=h/2, r = w/2-4;
+    const glow = currentTheme === 'light';
     hctx.clearRect(0,0,w,h);
+    hctx.shadowBlur = 0;
     hctx.beginPath(); hctx.arc(cx,cy,r,0,Math.PI*2);
     hctx.fillStyle = themeColors.panel; hctx.fill();
     hctx.strokeStyle = themeColors.hairline; hctx.lineWidth = 3; hctx.stroke();
@@ -328,6 +364,8 @@
       const major = deg % 90 === 0;
       const mid = deg % 30 === 0;
       hctx.strokeStyle = major ? themeColors.phosphor : ('rgba(' + themeColors.inkRgb + ',0.4)');
+      hctx.shadowColor = major && glow ? themeColors.phosphor : 'transparent';
+      hctx.shadowBlur = major && glow ? 8 : 0;
       hctx.lineWidth = major ? 2 : 1;
       const len = major ? 14 : (mid ? 9 : 5);
       hctx.beginPath(); hctx.moveTo(0,-r+4); hctx.lineTo(0,-r+4+len); hctx.stroke();
@@ -342,19 +380,26 @@
       hctx.rotate(-deg*Math.PI/180);
       hctx.rotate((headingDeg||0)*Math.PI/180);
       hctx.fillStyle = color;
+      hctx.shadowColor = glow ? color : 'transparent';
+      hctx.shadowBlur = glow ? 6 : 0;
       hctx.fillText(label, 0, 0);
       hctx.restore();
     });
     hctx.restore();
 
     // fixed heading pointer (top)
+    hctx.shadowColor = glow ? themeColors.amber : 'transparent';
+    hctx.shadowBlur = glow ? 10 : 0;
     hctx.beginPath();
     hctx.moveTo(cx,cy-r+2); hctx.lineTo(cx-6,cy-r+16); hctx.lineTo(cx+6,cy-r+16); hctx.closePath();
     hctx.fillStyle = themeColors.amber; hctx.fill();
 
     // center readout
+    hctx.shadowColor = glow ? themeColors.phosphor : 'transparent';
+    hctx.shadowBlur = glow ? 14 : 0;
     hctx.fillStyle = themeColors.phosphor; hctx.font = 'bold 20px monospace'; hctx.textAlign='center'; hctx.textBaseline='middle';
     hctx.fillText(headingDeg==null ? '—' : Math.round(headingDeg)+'°', cx, cy);
+    hctx.shadowBlur = 0;
   }
   drawHeading(null);
 

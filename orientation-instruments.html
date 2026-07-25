@@ -36,6 +36,9 @@
           phosphor green/amber look, or a neon pink/cyan alternative.
           Choice persists across visits. Canvas-drawn compass colors
           now follow the active theme too, not just CSS elements.
+  v2.9.0  Added a third theme: white background with a vivid orange/
+          teal "pop" palette. The theme button now cycles through all
+          three (Mono → Neon → Pop → Mono).
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -74,6 +77,19 @@
     --ink: #ffd9f7;
     --ink-dim: #c56bc0;
     --ink-rgb: 255,217,247;
+  }
+  :root[data-theme="light"]{
+    --bg: #ffffff;
+    --panel: #f5f5fa;
+    --panel-2: #ececf5;
+    --hairline: #dcdce8;
+    --phosphor: #ff5200;
+    --phosphor-dim: #b23900;
+    --amber: #00b8d9;
+    --red: #e11d48;
+    --ink: #14141c;
+    --ink-dim: #6e6e7c;
+    --ink-rgb: 20,20,28;
   }
   *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html,body{
@@ -239,7 +255,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2.8.0';
+  const APP_VERSION = '2.9.0';
 
   const statusDot = document.getElementById('statusDot');
   const statusText = document.getElementById('statusText');
@@ -255,6 +271,8 @@
   // except the canvas, which can't read var() — so canvas colors are
   // resolved via getComputedStyle and cached, refreshed on every switch.
   const THEME_KEY = 'positionHeadingTheme';
+  const THEME_ORDER = ['mono', 'pink', 'light'];
+  const THEME_LABELS = { mono: 'Neon', pink: 'Pop', light: 'Mono' }; // each label names the theme a tap switches TO
   let themeColors = {};
 
   function refreshThemeColors(){
@@ -278,10 +296,10 @@
   let currentTheme = 'mono';
   try {
     const saved = localStorage.getItem(THEME_KEY);
-    if (saved === 'pink' || saved === 'mono') currentTheme = saved;
+    if (THEME_ORDER.indexOf(saved) !== -1) currentTheme = saved;
   } catch(e){ /* localStorage unavailable — default theme used */ }
   applyTheme(currentTheme);
-  if (themeBtn) themeBtn.textContent = (currentTheme === 'pink') ? 'Mono' : 'Neon';
+  if (themeBtn) themeBtn.textContent = THEME_LABELS[currentTheme];
 
   function setStatus(text, cls){
     statusText.textContent = text;
@@ -545,9 +563,10 @@
   window.addEventListener('orientationchange', function(){ setTimeout(fitAltitudeFont, 50); });
 
   themeBtn.addEventListener('click', function(){
-    currentTheme = (currentTheme === 'pink') ? 'mono' : 'pink';
+    const idx = THEME_ORDER.indexOf(currentTheme);
+    currentTheme = THEME_ORDER[(idx + 1) % THEME_ORDER.length];
     applyTheme(currentTheme);
-    themeBtn.textContent = (currentTheme === 'pink') ? 'Mono' : 'Neon';
+    themeBtn.textContent = THEME_LABELS[currentTheme];
     try { localStorage.setItem(THEME_KEY, currentTheme); } catch(e){ /* localStorage unavailable — choice won't persist */ }
     drawHeading(heading); // canvas colors are cached, so repaint immediately with the new palette
   });

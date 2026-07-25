@@ -353,6 +353,12 @@
 
   setStatus('STANDBY');
 })();
+
+if ('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').catch(function(){ /* offline caching unavailable — page still works online */ });
+  });
+}
 </script>
 </body>
 </html>

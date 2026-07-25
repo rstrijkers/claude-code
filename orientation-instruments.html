@@ -32,6 +32,10 @@
           available space as much as possible, recalculated on open, on
           each new GPS reading, and on device rotation — rather than a
           fixed font size that left unused space around it.
+  v2.8.0  Added a theme switch (top-left of header): the original
+          phosphor green/amber look, or a neon pink/cyan alternative.
+          Choice persists across visits. Canvas-drawn compass colors
+          now follow the active theme too, not just CSS elements.
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -56,6 +60,20 @@
     --red: #ff5a4e;
     --ink: #cfd8dd;
     --ink-dim: #6f7d85;
+    --ink-rgb: 207,216,221;
+  }
+  :root[data-theme="pink"]{
+    --bg: #13001b;
+    --panel: #1f0629;
+    --panel-2: #270a33;
+    --hairline: #521460;
+    --phosphor: #ff2fe0;
+    --phosphor-dim: #7c1478;
+    --amber: #00f0ff;
+    --red: #ff3868;
+    --ink: #ffd9f7;
+    --ink-dim: #c56bc0;
+    --ink-rgb: 255,217,247;
   }
   *{ box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html,body{
@@ -63,6 +81,7 @@
     font-family: "IBM Plex Mono","SF Mono",ui-monospace,Menlo,monospace;
     overscroll-behavior:none; -webkit-user-select:none; user-select:none;
     min-height:100dvh;
+    transition: background-color .35s ease, color .35s ease;
   }
   .wrap{
     max-width:480px; margin:0 auto;
@@ -93,6 +112,12 @@
   .pausebtn:active{ background:var(--panel-2); }
   .pausebtn:disabled{ opacity:.35; }
   .pausebtn.active{ color:var(--phosphor); border-color:var(--phosphor-dim); }
+  .themebtn{
+    background:transparent; color:var(--ink-dim); border:1px solid var(--hairline);
+    font-family:inherit; font-size:9px; letter-spacing:.08em; text-transform:uppercase;
+    padding:3px 9px; border-radius:3px; margin-right:8px; cursor:pointer;
+  }
+  .themebtn:active{ background:var(--panel-2); color:var(--phosphor); border-color:var(--phosphor-dim); }
 
   .permit{
     background:var(--panel); border:1px solid var(--hairline); border-radius:6px;
@@ -104,7 +129,7 @@
     font-family:inherit; font-size:13px; letter-spacing:.06em; text-transform:uppercase;
     padding:12px 18px; border-radius:4px; cursor:pointer;
   }
-  .permit button:active{ background:var(--phosphor); color:#03140d; }
+  .permit button:active{ background:var(--phosphor); color:var(--bg); }
 
   .instruments{ display:flex; flex-direction:column; gap:16px; }
 
@@ -168,6 +193,7 @@
   <header>
     <div class="title">POSITION <b>&middot; HEADING</b></div>
     <div class="status" id="statusLine">
+      <button id="themeBtn" class="themebtn">Neon</button>
       <button id="pauseBtn" class="pausebtn" disabled>Pause</button>
       <span class="dot" id="statusDot"></span><span id="statusText">STANDBY</span>
     </div>
@@ -213,7 +239,7 @@
 
 <script>
 (function(){
-  const APP_VERSION = '2.7.0';
+  const APP_VERSION = '2.8.0';
 
   const statusDot = document.getElementById('statusDot');
   const statusText = document.getElementById('statusText');
@@ -221,6 +247,41 @@
   const instruments = document.getElementById('instruments');
   const grantBtn = document.getElementById('grantBtn');
   const pauseBtn = document.getElementById('pauseBtn');
+  const themeBtn = document.getElementById('themeBtn');
+
+  // ---------- theme ----------
+  // Two themes: 'mono' (default phosphor green/amber) and 'pink' (neon
+  // magenta/cyan). Colors live as CSS custom properties for everything
+  // except the canvas, which can't read var() — so canvas colors are
+  // resolved via getComputedStyle and cached, refreshed on every switch.
+  const THEME_KEY = 'positionHeadingTheme';
+  let themeColors = {};
+
+  function refreshThemeColors(){
+    const cs = getComputedStyle(document.documentElement);
+    themeColors = {
+      panel: cs.getPropertyValue('--panel').trim(),
+      hairline: cs.getPropertyValue('--hairline').trim(),
+      phosphor: cs.getPropertyValue('--phosphor').trim(),
+      amber: cs.getPropertyValue('--amber').trim(),
+      red: cs.getPropertyValue('--red').trim(),
+      ink: cs.getPropertyValue('--ink').trim(),
+      inkRgb: cs.getPropertyValue('--ink-rgb').trim()
+    };
+  }
+
+  function applyTheme(theme){
+    document.documentElement.setAttribute('data-theme', theme);
+    refreshThemeColors();
+  }
+
+  let currentTheme = 'mono';
+  try {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === 'pink' || saved === 'mono') currentTheme = saved;
+  } catch(e){ /* localStorage unavailable — default theme used */ }
+  applyTheme(currentTheme);
+  if (themeBtn) themeBtn.textContent = (currentTheme === 'pink') ? 'Mono' : 'Neon';
 
   function setStatus(text, cls){
     statusText.textContent = text;
@@ -238,21 +299,21 @@
     const w = hdg.width, h = hdg.height, cx=w/2, cy=h/2, r = w/2-4;
     hctx.clearRect(0,0,w,h);
     hctx.beginPath(); hctx.arc(cx,cy,r,0,Math.PI*2);
-    hctx.fillStyle = '#10151a'; hctx.fill();
-    hctx.strokeStyle = '#232b32'; hctx.lineWidth = 3; hctx.stroke();
+    hctx.fillStyle = themeColors.panel; hctx.fill();
+    hctx.strokeStyle = themeColors.hairline; hctx.lineWidth = 3; hctx.stroke();
 
     hctx.save(); hctx.translate(cx,cy); hctx.rotate(-(headingDeg||0)*Math.PI/180);
     for(let deg=0; deg<360; deg+=10){
       hctx.save(); hctx.rotate(deg*Math.PI/180);
       const major = deg % 90 === 0;
       const mid = deg % 30 === 0;
-      hctx.strokeStyle = major ? '#35e0a1' : 'rgba(207,216,221,0.4)';
+      hctx.strokeStyle = major ? themeColors.phosphor : ('rgba(' + themeColors.inkRgb + ',0.4)');
       hctx.lineWidth = major ? 2 : 1;
       const len = major ? 14 : (mid ? 9 : 5);
       hctx.beginPath(); hctx.moveTo(0,-r+4); hctx.lineTo(0,-r+4+len); hctx.stroke();
       hctx.restore();
     }
-    const dirs = [['N',0,'#ff5a4e'],['E',90,'#cfd8dd'],['S',180,'#cfd8dd'],['W',270,'#cfd8dd']];
+    const dirs = [['N',0,themeColors.red],['E',90,themeColors.ink],['S',180,themeColors.ink],['W',270,themeColors.ink]];
     hctx.font = 'bold 13px monospace'; hctx.textAlign='center'; hctx.textBaseline='middle';
     dirs.forEach(([label,deg,color])=>{
       hctx.save();
@@ -269,10 +330,10 @@
     // fixed heading pointer (top)
     hctx.beginPath();
     hctx.moveTo(cx,cy-r+2); hctx.lineTo(cx-6,cy-r+16); hctx.lineTo(cx+6,cy-r+16); hctx.closePath();
-    hctx.fillStyle = '#ffab3d'; hctx.fill();
+    hctx.fillStyle = themeColors.amber; hctx.fill();
 
     // center readout
-    hctx.fillStyle = '#35e0a1'; hctx.font = 'bold 20px monospace'; hctx.textAlign='center'; hctx.textBaseline='middle';
+    hctx.fillStyle = themeColors.phosphor; hctx.font = 'bold 20px monospace'; hctx.textAlign='center'; hctx.textBaseline='middle';
     hctx.fillText(headingDeg==null ? '—' : Math.round(headingDeg)+'°', cx, cy);
   }
   drawHeading(null);
@@ -482,6 +543,14 @@
   altFocus.addEventListener('click', closeAltFocus);
   window.addEventListener('resize', fitAltitudeFont);
   window.addEventListener('orientationchange', function(){ setTimeout(fitAltitudeFont, 50); });
+
+  themeBtn.addEventListener('click', function(){
+    currentTheme = (currentTheme === 'pink') ? 'mono' : 'pink';
+    applyTheme(currentTheme);
+    themeBtn.textContent = (currentTheme === 'pink') ? 'Mono' : 'Neon';
+    try { localStorage.setItem(THEME_KEY, currentTheme); } catch(e){ /* localStorage unavailable — choice won't persist */ }
+    drawHeading(heading); // canvas colors are cached, so repaint immediately with the new palette
+  });
 })();
 
 if ('serviceWorker' in navigator){

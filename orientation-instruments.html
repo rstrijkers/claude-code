@@ -19,6 +19,11 @@
   v2.6.0  Added a full-screen altitude view: an expand button on the
           Altitude cell opens a large, orientation-agnostic altitude
           readout; tapping anywhere closes it again.
+  v2.6.1  Fixed the full-screen altitude view not covering the whole
+          screen in landscape — it was nested inside the 480px-max-width
+          content wrapper, which is wider than the screen in portrait
+          but narrower than it in landscape. Moved it outside that
+          wrapper.
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -123,7 +128,8 @@
   .expandbtn:active{ background:var(--panel); color:var(--phosphor); border-color:var(--phosphor-dim); }
 
   .altFocus{
-    display:none; position:fixed; inset:0; z-index:1000; background:var(--bg);
+    display:none; position:fixed; inset:0; width:100vw; height:100dvh; max-width:none;
+    z-index:1000; background:var(--bg);
     flex-direction:column; align-items:center; justify-content:center; gap:1vmin;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
@@ -180,18 +186,18 @@
 
   </div>
 
-  <div class="altFocus" id="altFocus">
-    <div class="altFocusLabel">ALTITUDE</div>
-    <div class="altFocusValue" id="altFocusValue">—<span class="u">m</span></div>
-    <div class="altFocusHint">Tap anywhere to close</div>
-  </div>
-
   <footer>GPS &amp; COMPASS — LOCAL PROCESSING ONLY<br><span id="versionTag"></span></footer>
+</div>
+
+<div class="altFocus" id="altFocus">
+  <div class="altFocusLabel">ALTITUDE</div>
+  <div class="altFocusValue" id="altFocusValue">—<span class="u">m</span></div>
+  <div class="altFocusHint">Tap anywhere to close</div>
 </div>
 
 <script>
 (function(){
-  const APP_VERSION = '2.6.0';
+  const APP_VERSION = '2.6.1';
 
   const statusDot = document.getElementById('statusDot');
   const statusText = document.getElementById('statusText');

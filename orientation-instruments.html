@@ -24,6 +24,14 @@
           content wrapper, which is wider than the screen in portrait
           but narrower than it in landscape. Moved it outside that
           wrapper.
+  v2.6.2  Fixed the altitude number appearing visually off-center in the
+          full-screen view — the trailing "m" unit was pulling the whole
+          number+unit block left of true center. Added an invisible
+          mirrored spacer so the number itself is centered.
+  v2.7.0  The full-screen altitude number now auto-sizes to fill the
+          available space as much as possible, recalculated on open, on
+          each new GPS reading, and on device rotation — rather than a
+          fixed font size that left unused space around it.
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -130,19 +138,25 @@
   .altFocus{
     display:none; position:fixed; inset:0; width:100vw; height:100dvh; max-width:none;
     z-index:1000; background:var(--bg);
-    flex-direction:column; align-items:center; justify-content:center; gap:1vmin;
+    flex-direction:column;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
   .altFocusLabel{
-    font-size:5vmin; letter-spacing:.18em; color:var(--ink-dim); text-transform:uppercase;
+    flex:0 0 auto; font-size:4vmin; letter-spacing:.18em; color:var(--ink-dim); text-transform:uppercase;
+    text-align:center; padding:2vmin 0 0;
+  }
+  .altFocusValueWrap{
+    flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; overflow:hidden;
   }
   .altFocusValue{
-    font-size:26vmin; color:var(--phosphor); font-variant-numeric:tabular-nums; line-height:1;
-    font-weight:600;
+    font-size:20vmin; color:var(--phosphor); font-variant-numeric:tabular-nums; line-height:1;
+    font-weight:600; display:flex; align-items:baseline; justify-content:center; white-space:nowrap;
   }
-  .altFocusValue .u{ font-size:8vmin; color:var(--ink-dim); margin-left:1vmin; }
+  .altFocusValue .u{ font-size:0.3em; color:var(--ink-dim); margin-left:.15em; }
+  .altFocusValue .uGhost{ font-size:0.3em; visibility:hidden; margin-right:.15em; }
   .altFocusHint{
-    font-size:3.2vmin; color:var(--ink-dim); letter-spacing:.1em; text-transform:uppercase; margin-top:2vmin;
+    flex:0 0 auto; font-size:2.6vmin; color:var(--ink-dim); letter-spacing:.1em; text-transform:uppercase;
+    text-align:center; padding:0 0 2vmin;
   }
 
   footer{ text-align:center; font-size:9px; color:var(--ink-dim); letter-spacing:.08em; padding-top:4px; }
@@ -191,13 +205,15 @@
 
 <div class="altFocus" id="altFocus">
   <div class="altFocusLabel">ALTITUDE</div>
-  <div class="altFocusValue" id="altFocusValue">—<span class="u">m</span></div>
+  <div class="altFocusValueWrap" id="altFocusValueWrap">
+    <div class="altFocusValue" id="altFocusValueRow"><span class="uGhost" aria-hidden="true">m</span><span id="altFocusNum">—</span><span class="u" id="altFocusUnit">m</span></div>
+  </div>
   <div class="altFocusHint">Tap anywhere to close</div>
 </div>
 
 <script>
 (function(){
-  const APP_VERSION = '2.6.1';
+  const APP_VERSION = '2.7.0';
 
   const statusDot = document.getElementById('statusDot');
   const statusText = document.getElementById('statusText');
@@ -306,7 +322,8 @@
     document.getElementById('vLat').textContent = c.latitude.toFixed(5)+'°';
     document.getElementById('vLon').textContent = c.longitude.toFixed(5)+'°';
     document.getElementById('vAlt').innerHTML = (c.altitude==null ? '—' : c.altitude.toFixed(1)) + '<span class="u">m</span>';
-    document.getElementById('altFocusValue').innerHTML = (c.altitude==null ? '—' : c.altitude.toFixed(1)) + '<span class="u">m</span>';
+    document.getElementById('altFocusNum').textContent = (c.altitude==null ? '—' : c.altitude.toFixed(1));
+    fitAltitudeFont();
     const kmh = (c.speed==null) ? null : c.speed * 3.6; // m/s -> km/h
     document.getElementById('vSpeed').innerHTML = (kmh==null? '—' : kmh.toFixed(1)) + '<span class="u">km/h</span>';
     document.getElementById('vAcc').innerHTML = (c.accuracy==null? '—' : c.accuracy.toFixed(0)) + '<span class="u">m</span>';
@@ -426,9 +443,36 @@
   // ---------- full-screen altitude view ----------
   const altExpandBtn = document.getElementById('altExpandBtn');
   const altFocus = document.getElementById('altFocus');
+  const altFocusValueWrap = document.getElementById('altFocusValueWrap');
+  const altFocusValueRow = document.getElementById('altFocusValueRow');
   let altFocusOpen = false;
 
-  function openAltFocus(){ altFocus.style.display = 'flex'; altFocusOpen = true; }
+  // Sizes the number to be as large as possible for the current screen and
+  // the current digit count: measures the available box, then shrinks the
+  // font from a generous starting point until the text actually fits both
+  // dimensions. Re-run on open, on new altitude readings, and on rotation.
+  function fitAltitudeFont(){
+    if (!altFocusOpen) return;
+    const maxW = altFocusValueWrap.clientWidth * 0.94;
+    const maxH = altFocusValueWrap.clientHeight * 0.94;
+    if (maxW <= 0 || maxH <= 0) return;
+
+    let size = Math.min(maxW, maxH) * 1.3;
+    altFocusValueRow.style.fontSize = size + 'px';
+
+    let guard = 40;
+    while (guard-- > 0 && size > 10 &&
+           (altFocusValueRow.scrollWidth > maxW || altFocusValueRow.scrollHeight > maxH)){
+      size *= 0.92;
+      altFocusValueRow.style.fontSize = size + 'px';
+    }
+  }
+
+  function openAltFocus(){
+    altFocus.style.display = 'flex';
+    altFocusOpen = true;
+    fitAltitudeFont();
+  }
   function closeAltFocus(){ altFocus.style.display = 'none'; altFocusOpen = false; }
 
   altExpandBtn.addEventListener('click', function(e){
@@ -436,6 +480,8 @@
     if (altFocusOpen) closeAltFocus(); else openAltFocus();
   });
   altFocus.addEventListener('click', closeAltFocus);
+  window.addEventListener('resize', fitAltitudeFont);
+  window.addEventListener('orientationchange', function(){ setTimeout(fitAltitudeFont, 50); });
 })();
 
 if ('serviceWorker' in navigator){

@@ -1,8 +1,13 @@
 // Caches this page so it can open with no network connection.
 // The app's data (GPS, compass) comes from on-device sensors, not
 // the network — this worker only needs to serve the page itself.
+//
+// CACHE_NAME is tied to the app version in orientation-instruments.html.
+// Bump both together when shipping a change — a new cache name forces
+// Safari to fetch the updated page instead of serving the stale cached
+// copy, which otherwise can stick around indefinitely.
 
-const CACHE_NAME = 'position-heading-v1';
+const CACHE_NAME = 'position-heading-v2.5.0';
 
 self.addEventListener('install', function(event){
   event.waitUntil(

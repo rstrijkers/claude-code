@@ -16,6 +16,9 @@
           (Apple Maps, Google Maps, Amap) using current coordinates.
   v2.4.0  Added this version history and an on-screen version indicator.
   v2.5.0  Removed the "Open in Maps" buttons (Apple/Google/Amap).
+  v2.6.0  Added a full-screen altitude view: an expand button on the
+          Altitude cell opens a large, orientation-agnostic altitude
+          readout; tapping anywhere closes it again.
 -->
 <!DOCTYPE html>
 <html lang="en">
@@ -111,6 +114,31 @@
   .cell .v{ font-size:20px; color:var(--phosphor); margin-top:4px; font-variant-numeric:tabular-nums; }
   .cell .v .u{ font-size:12px; color:var(--ink-dim); margin-left:3px; }
 
+  .alt-cell{ position:relative; }
+  .expandbtn{
+    position:absolute; top:8px; right:8px; background:transparent; color:var(--ink-dim);
+    border:1px solid var(--hairline); border-radius:4px; width:24px; height:24px;
+    font-size:13px; line-height:1; cursor:pointer; padding:0;
+  }
+  .expandbtn:active{ background:var(--panel); color:var(--phosphor); border-color:var(--phosphor-dim); }
+
+  .altFocus{
+    display:none; position:fixed; inset:0; z-index:1000; background:var(--bg);
+    flex-direction:column; align-items:center; justify-content:center; gap:1vmin;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .altFocusLabel{
+    font-size:5vmin; letter-spacing:.18em; color:var(--ink-dim); text-transform:uppercase;
+  }
+  .altFocusValue{
+    font-size:26vmin; color:var(--phosphor); font-variant-numeric:tabular-nums; line-height:1;
+    font-weight:600;
+  }
+  .altFocusValue .u{ font-size:8vmin; color:var(--ink-dim); margin-left:1vmin; }
+  .altFocusHint{
+    font-size:3.2vmin; color:var(--ink-dim); letter-spacing:.1em; text-transform:uppercase; margin-top:2vmin;
+  }
+
   footer{ text-align:center; font-size:9px; color:var(--ink-dim); letter-spacing:.08em; padding-top:4px; }
 </style>
 </head>
@@ -140,7 +168,11 @@
     <div class="data-grid">
       <div class="cell"><div class="k">Latitude</div><div class="v" id="vLat">—</div></div>
       <div class="cell"><div class="k">Longitude</div><div class="v" id="vLon">—</div></div>
-      <div class="cell"><div class="k">Altitude</div><div class="v" id="vAlt">—<span class="u">m</span></div></div>
+      <div class="cell alt-cell">
+        <div class="k">Altitude</div>
+        <div class="v" id="vAlt">—<span class="u">m</span></div>
+        <button class="expandbtn" id="altExpandBtn" aria-label="Show altitude full screen">⤢</button>
+      </div>
       <div class="cell"><div class="k">Speed</div><div class="v" id="vSpeed">—<span class="u">km/h</span></div></div>
       <div class="cell"><div class="k">Accuracy</div><div class="v" id="vAcc">—<span class="u">m</span></div></div>
       <div class="cell"><div class="k">Direction</div><div class="v" id="vHeading">—<span class="u">°</span></div></div>
@@ -148,12 +180,18 @@
 
   </div>
 
+  <div class="altFocus" id="altFocus">
+    <div class="altFocusLabel">ALTITUDE</div>
+    <div class="altFocusValue" id="altFocusValue">—<span class="u">m</span></div>
+    <div class="altFocusHint">Tap anywhere to close</div>
+  </div>
+
   <footer>GPS &amp; COMPASS — LOCAL PROCESSING ONLY<br><span id="versionTag"></span></footer>
 </div>
 
 <script>
 (function(){
-  const APP_VERSION = '2.5.0';
+  const APP_VERSION = '2.6.0';
 
   const statusDot = document.getElementById('statusDot');
   const statusText = document.getElementById('statusText');
@@ -262,6 +300,7 @@
     document.getElementById('vLat').textContent = c.latitude.toFixed(5)+'°';
     document.getElementById('vLon').textContent = c.longitude.toFixed(5)+'°';
     document.getElementById('vAlt').innerHTML = (c.altitude==null ? '—' : c.altitude.toFixed(1)) + '<span class="u">m</span>';
+    document.getElementById('altFocusValue').innerHTML = (c.altitude==null ? '—' : c.altitude.toFixed(1)) + '<span class="u">m</span>';
     const kmh = (c.speed==null) ? null : c.speed * 3.6; // m/s -> km/h
     document.getElementById('vSpeed').innerHTML = (kmh==null? '—' : kmh.toFixed(1)) + '<span class="u">km/h</span>';
     document.getElementById('vAcc').innerHTML = (c.accuracy==null? '—' : c.accuracy.toFixed(0)) + '<span class="u">m</span>';
@@ -377,6 +416,20 @@
 
   setStatus('STANDBY');
   document.getElementById('versionTag').textContent = 'v' + APP_VERSION;
+
+  // ---------- full-screen altitude view ----------
+  const altExpandBtn = document.getElementById('altExpandBtn');
+  const altFocus = document.getElementById('altFocus');
+  let altFocusOpen = false;
+
+  function openAltFocus(){ altFocus.style.display = 'flex'; altFocusOpen = true; }
+  function closeAltFocus(){ altFocus.style.display = 'none'; altFocusOpen = false; }
+
+  altExpandBtn.addEventListener('click', function(e){
+    e.stopPropagation();
+    if (altFocusOpen) closeAltFocus(); else openAltFocus();
+  });
+  altFocus.addEventListener('click', closeAltFocus);
 })();
 
 if ('serviceWorker' in navigator){
